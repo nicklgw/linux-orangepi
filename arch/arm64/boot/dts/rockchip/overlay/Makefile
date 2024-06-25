@@ -124,8 +124,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk356x-pwm11-m1.dtbo \
 	rk356x-pwm15-m1.dtbo \
 	rk356x-pwm7.dtbo \
-	rk356x-ov5647-c1.dtbo \
-	rk356x-ov5647-c2.dtbo \
+	rk356x-cam1.dtbo \
+	rk356x-cam2.dtbo \
 	rk3399-lcd1.dtbo \
 	rk3399-lcd2.dtbo \
 	rk3399-camera1.dtbo \

@@ -107,4 +107,12 @@
 			status = "okay";
 		};
 	};
+
+	fragment@13 {
+		target = <&imx219_1>;
+
+		__overlay__ {
+			status = "okay";
+		};
+	};
 };
