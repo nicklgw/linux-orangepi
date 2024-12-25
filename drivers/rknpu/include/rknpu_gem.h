@@ -60,6 +60,7 @@ struct rknpu_gem_object {
 	struct page **pages;
 	struct sg_table *sgt;
 	struct drm_mm_node mm_node;
+	int iommu_domain_id;
 };
 
 enum rknpu_cache_type {
@@ -71,7 +72,8 @@ enum rknpu_cache_type {
 struct rknpu_gem_object *rknpu_gem_object_create(struct drm_device *dev,
 						 unsigned int flags,
 						 unsigned long size,
-						 unsigned long sram_size);
+						 unsigned long sram_size,
+						 int iommu_domain_id);
 
 /* destroy a buffer with gem object */
 void rknpu_gem_object_destroy(struct rknpu_gem_object *rknpu_obj);
@@ -163,6 +165,8 @@ int rknpu_gem_fault(struct vm_fault *vmf);
 int rknpu_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
 #endif
 
+int rknpu_gem_mmap_obj(struct drm_gem_object *obj, struct vm_area_struct *vma);
+
 /* set vm_flags and we can change the vm attribute to other one at here. */
 int rknpu_gem_mmap(struct file *filp, struct vm_area_struct *vma);
 
@@ -176,8 +180,13 @@ struct drm_gem_object *
 rknpu_gem_prime_import_sg_table(struct drm_device *dev,
 				struct dma_buf_attachment *attach,
 				struct sg_table *sgt);
+#if KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE
 void *rknpu_gem_prime_vmap(struct drm_gem_object *obj);
 void rknpu_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+#else
+int rknpu_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
+void rknpu_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
+#endif
 int rknpu_gem_prime_mmap(struct drm_gem_object *obj,
 			 struct vm_area_struct *vma);
 

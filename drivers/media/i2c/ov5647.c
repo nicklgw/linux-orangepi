@@ -890,7 +890,7 @@ static int ov5647_power_off(struct device *dev)
 		dev_dbg(dev, "software standby failed\n");
 
 	clk_disable_unprepare(sensor->xclk);
-	gpiod_set_value_cansleep(sensor->pwdn, 1);
+	//gpiod_set_value_cansleep(sensor->pwdn, 1);
 
 	return 0;
 }
@@ -956,21 +956,6 @@ static const struct v4l2_subdev_core_ops ov5647_subdev_core_ops = {
 #endif
 	.ioctl	= ov5647_ioctl,
 };
-
-static const struct v4l2_rect *
-__ov5647_get_pad_crop(struct ov5647 *ov5647,
-		      struct v4l2_subdev_pad_config *sd_state,
-		      unsigned int pad, enum v4l2_subdev_format_whence which)
-{
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_get_try_crop(&ov5647->sd, sd_state, pad);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &ov5647->mode->crop;
-	}
-
-	return NULL;
-}
 
 static int ov5647_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -1046,19 +1031,18 @@ static int ov5647_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad_id,
 
 	val = V4L2_MBUS_CSI2_2_LANE | V4L2_MBUS_CSI2_CHANNEL_0 |
 	      V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
+
 	config->type = V4L2_MBUS_CSI2_DPHY;
 	config->flags = val;
 
 	return 0;
 }
 
-
 static int ov5647_g_input_status(struct v4l2_subdev *sd, u32 *status)
 {
 	*status = 0;
 	return 0;
 }
-
 
 static const struct v4l2_subdev_video_ops ov5647_subdev_video_ops = {
 	.s_stream =		ov5647_s_stream,
@@ -1087,7 +1071,7 @@ static u32 ov5647_get_mbus_code(struct v4l2_subdev *sd)
 }
 
 static int ov5647_enum_mbus_code(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_pad_config *sd_state,
+				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	if (code->index > 0)
@@ -1114,7 +1098,7 @@ static int ov5647_enum_frame_interval(struct v4l2_subdev *sd,
 }
 
 static int ov5647_enum_frame_size(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *sd_state,
+				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	const struct v4l2_mbus_framefmt *fmt;
@@ -1133,7 +1117,7 @@ static int ov5647_enum_frame_size(struct v4l2_subdev *sd,
 }
 
 static int ov5647_get_pad_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *sd_state,
+			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -1143,7 +1127,7 @@ static int ov5647_get_pad_fmt(struct v4l2_subdev *sd,
 	mutex_lock(&sensor->lock);
 	switch (format->which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
-		sensor_format = v4l2_subdev_get_try_format(sd, sd_state,
+		sensor_format = v4l2_subdev_get_try_format(sd, cfg,
 							   format->pad);
 		break;
 	default:
@@ -1160,7 +1144,7 @@ static int ov5647_get_pad_fmt(struct v4l2_subdev *sd,
 }
 
 static int ov5647_set_pad_fmt(struct v4l2_subdev *sd,
-			      struct v4l2_subdev_pad_config *sd_state,
+			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt = &format->format;
@@ -1174,7 +1158,7 @@ static int ov5647_set_pad_fmt(struct v4l2_subdev *sd,
 	/* Update the sensor mode and apply at it at streamon time. */
 	mutex_lock(&sensor->lock);
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY) {
-		*v4l2_subdev_get_try_format(sd, sd_state, format->pad) = mode->format;
+		*v4l2_subdev_get_try_format(sd, cfg, format->pad) = mode->format;
 	} else {
 		int exposure_max, exposure_def;
 		int hblank, vblank;
@@ -1212,50 +1196,12 @@ static int ov5647_set_pad_fmt(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int ov5647_get_selection(struct v4l2_subdev *sd,
-				struct v4l2_subdev_pad_config *sd_state,
-				struct v4l2_subdev_selection *sel)
-{
-	switch (sel->target) {
-	case V4L2_SEL_TGT_CROP: {
-		struct ov5647 *sensor = to_sensor(sd);
-
-		mutex_lock(&sensor->lock);
-		sel->r = *__ov5647_get_pad_crop(sensor, sd_state, sel->pad,
-						sel->which);
-		mutex_unlock(&sensor->lock);
-
-		return 0;
-	}
-
-	case V4L2_SEL_TGT_NATIVE_SIZE:
-		sel->r.top = 0;
-		sel->r.left = 0;
-		sel->r.width = OV5647_NATIVE_WIDTH;
-		sel->r.height = OV5647_NATIVE_HEIGHT;
-
-		return 0;
-
-	case V4L2_SEL_TGT_CROP_DEFAULT:
-	case V4L2_SEL_TGT_CROP_BOUNDS:
-		sel->r.top = OV5647_PIXEL_ARRAY_TOP;
-		sel->r.left = OV5647_PIXEL_ARRAY_LEFT;
-		sel->r.width = OV5647_PIXEL_ARRAY_WIDTH;
-		sel->r.height = OV5647_PIXEL_ARRAY_HEIGHT;
-
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
 static const struct v4l2_subdev_pad_ops ov5647_subdev_pad_ops = {
 	.enum_mbus_code		= ov5647_enum_mbus_code,
 	.enum_frame_interval	= ov5647_enum_frame_interval,
 	.enum_frame_size	= ov5647_enum_frame_size,
 	.set_fmt		= ov5647_set_pad_fmt,
 	.get_fmt		= ov5647_get_pad_fmt,
-	.get_selection		= ov5647_get_selection,
 	.get_mbus_config	= ov5647_g_mbus_config,
 };
 
@@ -1594,8 +1540,8 @@ out:
 static int ov5647_probe(struct i2c_client *client,
 			const struct i2c_device_id *did)
 {
-	struct device_node *np = client->dev.of_node;
 	struct device *dev = &client->dev;
+	struct device_node *np = dev->of_node;
 	struct ov5647 *sensor;
 	struct v4l2_subdev *sd;
 	u32 xclk_freq;
@@ -1645,7 +1591,7 @@ static int ov5647_probe(struct i2c_client *client,
 	}
 
 	/* Request the power down GPIO asserted. */
-	sensor->pwdn = devm_gpiod_get_optional(dev, "pwdn", GPIOD_OUT_HIGH);
+	sensor->pwdn = devm_gpiod_get(dev, "pwdn", GPIOD_OUT_HIGH);
 	if (IS_ERR(sensor->pwdn)) {
 		dev_err(dev, "Failed to get 'pwdn' gpio\n");
 		//return -EINVAL;

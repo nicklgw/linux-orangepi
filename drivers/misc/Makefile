@@ -3,6 +3,7 @@
 # Makefile for misc devices that really don't fit anywhere else.
 #
 
+obj-y				+= rk628/
 obj-$(CONFIG_RK803)		+= rk803.o
 obj-y				+= rockchip/
 obj-$(CONFIG_LT7911D_FB_NOTIFIER) += lt7911d-fb-notifier.o
@@ -61,3 +62,4 @@ obj-$(CONFIG_UACCE)		+= uacce/
 obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
 obj-$(CONFIG_HISI_HIKEY_USB)	+= hisi_hikey_usb.o
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
+obj-$(CONFIG_OVER_TEMP_SHUTDOWN)	+= over_temp_shutdown.o
